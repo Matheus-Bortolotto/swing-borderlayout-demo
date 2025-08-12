@@ -1,36 +1,20 @@
+
 package com.example.app.service;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Properties;
+import java.util.prefs.Preferences;
 
-/** Serviço simples para persistir preferências em um arquivo .properties no diretório do usuário. */
 public class PreferencesService {
+    private final Preferences prefs;
 
-    private final Path file;
-
-    public PreferencesService() {
-        this.file = Path.of(System.getProperty("user.home"), ".swing_forms_summary.properties");
+    public PreferencesService(Class<?> nodeOwner) {
+        this.prefs = Preferences.userNodeForPackage(nodeOwner);
     }
 
-    public String loadName() {
-        Properties props = new Properties();
-        if (Files.exists(file)) {
-            try (InputStream in = Files.newInputStream(file)) {
-                props.load(in);
-            } catch (IOException ignored) { }
-        }
-        return props.getProperty("name", "");
-    }
+    public String getName()   { return prefs.get("name", ""); }
+    public String getEmail()  { return prefs.get("email", ""); }
+    public String getBody()   { return prefs.get("body", ""); }
 
-    public void saveName(String name) {
-        Properties props = new Properties();
-        props.setProperty("name", name == null ? "" : name);
-        try (OutputStream out = Files.newOutputStream(file)) {
-            props.store(out, "Swing Forms Summary Preferences");
-        } catch (IOException ignored) { }
-    }
+    public void setName(String v)  { prefs.put("name", v == null ? "" : v); }
+    public void setEmail(String v) { prefs.put("email", v == null ? "" : v); }
+    public void setBody(String v)  { prefs.put("body", v == null ? "" : v); }
 }

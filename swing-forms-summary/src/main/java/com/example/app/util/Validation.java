@@ -1,17 +1,24 @@
+
 package com.example.app.util;
 
 import java.util.regex.Pattern;
 
-/** Validações simples e reutilizáveis. */
 public final class Validation {
-    private static final Pattern EMAIL =  Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private static final Pattern EMAIL =
+            Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+
     private Validation(){}
 
+    public static String normalize(String s) {
+        return s == null ? "" : s.trim().replaceAll("\\s+", " ");
+    }
+
     public static boolean notBlank(String s) {
-        return s != null && !s.trim().isEmpty();
+        return !normalize(s).isEmpty();
     }
 
     public static boolean isEmail(String s) {
-        return notBlank(s) && EMAIL.matcher(s.trim()).matches();
+        s = normalize(s);
+        return !s.isEmpty() && EMAIL.matcher(s).matches();
     }
 }

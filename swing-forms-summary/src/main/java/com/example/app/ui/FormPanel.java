@@ -1,102 +1,217 @@
-package com.example.app.ui;
+
+package com.example.app.ui.form;
 
 import com.example.app.model.Message;
 import com.example.app.util.IconLoader;
 import com.example.app.util.Validation;
 
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.util.function.Consumer;
 
-/** Tela 1: Formulário. */
 public class FormPanel extends JPanel {
-
-    private final JTextField txtName = new JTextField(20);
-    private final JTextField txtEmail = new JTextField(20);
+    private final JTextField txtName = new JTextField();
+    private final JTextField txtEmail = new JTextField();
     private final JTextArea  txtBody = new JTextArea(6, 20);
-    private final JButton btnSend   = new JButton("Enviar");
+    private final JButton btnSend  = new JButton("Enviar");
+    private final JButton btnClear = new JButton("Limpar");
 
-    private Consumer<Message> onSubmit = m -> {};
+    private Consumer<Message> onSubmit;
+
+    private static final Border ERROR_BORDER = BorderFactory.createLineBorder(new Color(0xD32F2F), 2);
+    private static final Border DEFAULT_BORDER = new JTextField().getBorder();
 
     public FormPanel() {
-        super(new BorderLayout(10, 10));
+        setOpaque(true);
+        initUI();
+        initValidation();
+        initActions();
+    }
 
-        // Centro: formulário com GridBagLayout
-        JPanel form = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6,6,6,6);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
+    private void initUI() {
+        JLabel lblName  = new JLabel("Nome");
+        JLabel lblEmail = new JLabel("E-mail");
+        JLabel lblBody  = new JLabel("Mensagem");
 
-        JLabel lblName = new JLabel("Nome:");
-        JLabel lblEmail = new JLabel("E-mail:");
-        JLabel lblMsg = new JLabel("Mensagem:");
+        lblName.setDisplayedMnemonic('N');
+        lblEmail.setDisplayedMnemonic('E');
+        lblBody.setDisplayedMnemonic('M');
+
+        lblName.setLabelFor(txtName);
+        lblEmail.setLabelFor(txtEmail);
+        lblBody.setLabelFor(txtBody);
+
+        txtName.getAccessibleContext().setAccessibleName("Nome");
+        txtEmail.getAccessibleContext().setAccessibleName("E-mail");
+        txtBody.getAccessibleContext().setAccessibleName("Mensagem");
 
         txtBody.setLineWrap(true);
         txtBody.setWrapStyleWord(true);
-        JScrollPane scroll = new JScrollPane(txtBody);
 
-        gbc.gridx=0; gbc.gridy=0; gbc.weightx=0; form.add(lblName, gbc);
-        gbc.gridx=1; gbc.gridy=0; gbc.weightx=1; form.add(txtName, gbc);
+        JScrollPane spBody = new JScrollPane(txtBody);
 
-        gbc.gridx=0; gbc.gridy=1; gbc.weightx=0; form.add(lblEmail, gbc);
-        gbc.gridx=1; gbc.gridy=1; gbc.weightx=1; form.add(txtEmail, gbc);
+        btnSend.setIcon(IconLoader.load("/icons/send.png", 16));
 
-        gbc.gridx=0; gbc.gridy=2; gbc.weightx=0; form.add(lblMsg, gbc);
-        gbc.gridx=1; gbc.gridy=2; gbc.weightx=1; form.add(scroll, gbc);
+        GroupLayout gl = new GroupLayout(this);
+        setLayout(gl);
+        gl.setAutoCreateGaps(true);
+        gl.setAutoCreateContainerGaps(true);
 
-        // Rodapé: botão enviar com ícone, tooltip, mnemonic e atalho Ctrl+Enter
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        ImageIcon sendIcon = IconLoader.load("/icons/send.png", 18);
-        if (sendIcon != null) btnSend.setIcon(sendIcon);
-        btnSend.setToolTipText("Envia o formulário (Ctrl+Enter)");
-        btnSend.setMnemonic('E');
-        footer.add(btnSend);
+        gl.setHorizontalGroup(gl.createParallelGroup()
+                .addGroup(gl.createSequentialGroup()
+                        .addGroup(gl.createParallelGroup()
+                                .addComponent(lblName)
+                                .addComponent(lblEmail)
+                                .addComponent(lblBody))
+                        .addGroup(gl.createParallelGroup()
+                                .addComponent(txtName)
+                                .addComponent(txtEmail)
+                                .addComponent(spBody)))
+                .addGroup(gl.createSequentialGroup()
+                        .addComponent(btnClear)
+                        .addGap(0, Short.MAX_VALUE)
+                        .addComponent(btnSend))
+        );
 
-        // Ação do botão
-        btnSend.addActionListener(e -> trySubmit());
+        gl.setVerticalGroup(gl.createSequentialGroup()
+                .addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                        .addComponent(lblName).addComponent(txtName))
+                .addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                        .addComponent(lblEmail).addComponent(txtEmail))
+                .addGroup(gl.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addComponent(lblBody).addComponent(spBody))
+                .addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                        .addComponent(btnClear).addComponent(btnSend))
+        );
 
-        // Atalho Ctrl+Enter
-        getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(KeyStroke.getKeyStroke("ctrl ENTER"), "send");
-        getActionMap().put("send", new AbstractAction() {
-            @Override public void actionPerformed(java.awt.event.ActionEvent e) { trySubmit(); }
+        // botao padrão
+        SwingUtilities.getRootPane(this).setDefaultButton(btnSend);
+
+        // foco inicial
+        SwingUtilities.invokeLater(() -> txtName.requestFocusInWindow());
+    }
+
+    private void initValidation() {
+        txtName.setInputVerifier(new NotBlankVerifier("Nome"));
+        txtEmail.setInputVerifier(new EmailVerifier());
+        txtBody.setInputVerifier(new NotBlankVerifier("Mensagem"));
+
+        ((AbstractDocument) txtName.getDocument()).setDocumentFilter(new MaxLenFilter(80));
+        ((AbstractDocument) txtEmail.getDocument()).setDocumentFilter(new MaxLenFilter(120));
+        ((AbstractDocument) txtBody.getDocument()).setDocumentFilter(new MaxLenFilter(2000));
+    }
+
+    private void initActions() {
+        btnSend.addActionListener(e -> submit());
+        btnClear.addActionListener(e -> {
+            txtName.setText("");
+            txtEmail.setText("");
+            txtBody.setText("");
+            clearError(txtName);
+            clearError(txtEmail);
+            clearError(txtBody);
+            txtName.requestFocusInWindow();
         });
 
-        add(form, BorderLayout.CENTER);
-        add(footer, BorderLayout.SOUTH);
+        // Ctrl+Enter para enviar
+        txtBody.getInputMap(JComponent.WHEN_FOCUSED)
+                .put(KeyStroke.getKeyStroke("ctrl ENTER"), "send");
+        txtBody.getActionMap().put("send", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) { submit(); }
+        });
     }
 
-    public void setOnSubmit(java.util.function.Consumer<Message> onSubmit) {
-        this.onSubmit = onSubmit != null ? onSubmit : m -> {};
-    }
+    private void submit() {
+        String name  = Validation.normalize(txtName.getText());
+        String email = Validation.normalize(txtEmail.getText());
+        String body  = Validation.normalize(txtBody.getText());
 
-    public void prefillName(String name) {
-        txtName.setText(name == null ? "" : name);
-    }
+        boolean ok = true;
+        if (!Validation.notBlank(name))  { markError(txtName, "Informe seu nome"); ok = false; }
+        if (!Validation.isEmail(email))  { markError(txtEmail, "E-mail inválido"); ok = false; }
+        if (!Validation.notBlank(body))  { markError(txtBody, "Escreva a mensagem"); ok = false; }
 
-    private void trySubmit() {
-        String name = txtName.getText().trim();
-        String email = txtEmail.getText().trim();
-        String body = txtBody.getText().trim();
-
-        if (!Validation.notBlank(name) || !Validation.isEmail(email) || !Validation.notBlank(body)) {
-            JOptionPane.showMessageDialog(this,
-                    "Preencha Nome, E-mail válido e Mensagem.",
-                    "Validação", JOptionPane.WARNING_MESSAGE);
+        if (!ok) {
+            Toolkit.getDefaultToolkit().beep();
+            (txtName.isBorderPainted() ? txtName : txtEmail).requestFocusInWindow();
             return;
         }
 
-        Message m = new Message(name, email, body);
-        onSubmit.accept(m);
+        clearError(txtName); clearError(txtEmail); clearError(txtBody);
 
-        // Limpeza dos campos
-        txtBody.setText("");
-        // Mantém nome e e-mail (útil em apps reais). Para limpar tudo, descomente:
-        // txtName.setText(""); txtEmail.setText("");
+        if (onSubmit != null) {
+            onSubmit.accept(new Message(name, email, body));
+        }
     }
 
-    // TODO: aplicar InputVerifier por campo e destacar visualmente campos inválidos
-    // TODO: extrair strings fixas para uma classe de mensagens (i18n)
+    public void setOnSubmit(Consumer<Message> onSubmit) {
+        this.onSubmit = onSubmit;
+    }
+
+    public void setValues(String name, String email, String body) {
+        txtName.setText(name == null ? "" : name);
+        txtEmail.setText(email == null ? "" : email);
+        txtBody.setText(body == null ? "" : body);
+    }
+
+    private void markError(JTextComponent c, String tip) {
+        c.setBorder(ERROR_BORDER);
+        c.setToolTipText(tip);
+    }
+
+    private void clearError(JTextComponent c) {
+        c.setBorder(DEFAULT_BORDER);
+        c.setToolTipText(null);
+    }
+
+    // ===== Verifiers & Filters =====
+    private static class NotBlankVerifier extends InputVerifier {
+        private final String fieldName;
+        NotBlankVerifier(String fieldName) { this.fieldName = fieldName; }
+        @Override public boolean verify(JComponent c) {
+            JTextComponent tc = (JTextComponent) c;
+            boolean ok = Validation.notBlank(tc.getText());
+            tc.setBorder(ok ? DEFAULT_BORDER : ERROR_BORDER);
+            c.setToolTipText(ok ? null : fieldName + " é obrigatório");
+            return ok;
+        }
+    }
+
+    private static class EmailVerifier extends InputVerifier {
+        @Override public boolean verify(JComponent c) {
+            JTextComponent tc = (JTextComponent) c;
+            boolean ok = Validation.isEmail(tc.getText());
+            tc.setBorder(ok ? DEFAULT_BORDER : ERROR_BORDER);
+            c.setToolTipText(ok ? null : "E-mail inválido");
+            return ok;
+        }
+    }
+
+    private static class MaxLenFilter extends DocumentFilter {
+        private final int max;
+        MaxLenFilter(int max) { this.max = max; }
+
+        @Override
+        public void insertString(FilterBypass fb, int off, String str, AttributeSet a) throws BadLocationException {
+            if (str == null) return;
+            if (fb.getDocument().getLength() + str.length() <= max) {
+                super.insertString(fb, off, str, a);
+            } else {
+                Toolkit.getDefaultToolkit().beep();
+            }
+        }
+
+        @Override
+        public void replace(FilterBypass fb, int off, int len, String str, AttributeSet a) throws BadLocationException {
+            if (str == null) str = "";
+            if (fb.getDocument().getLength() - len + str.length() <= max) {
+                super.replace(fb, off, len, str, a);
+            } else {
+                Toolkit.getDefaultToolkit().beep();
+            }
+        }
+    }
 }

@@ -1,11 +1,13 @@
+
 package com.example.app;
+
+import com.example.app.ui.MainFrame;
 
 import javax.swing.*;
 
-/** Ponto de entrada da aplicação. */
 public class App {
     public static void main(String[] args) {
-        // Tenta aplicar Nimbus antes de criar a UI
+        // Look & Feel (use Nimbus por padrão; troque por FlatLaf se adicionar a dependência)
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -13,10 +15,12 @@ public class App {
                     break;
                 }
             }
-        } catch (Exception ignored) { }
+            // Se usar FlatLaf:
+            // UIManager.setLookAndFeel(new com.formdev.flatlaf.themes.FlatMacLightLaf());
+        } catch (Exception ignored) {}
 
         SwingUtilities.invokeLater(() -> {
-            com.example.app.ui.MainFrame frame = new com.example.app.ui.MainFrame();
+            MainFrame frame = new MainFrame();
             frame.setVisible(true);
         });
     }
